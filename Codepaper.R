@@ -1,6 +1,6 @@
 rm(list = ls())
 
-### Función para extraer los ruts desde los normbres de los archivos
+### Funci?n para extraer los ruts desde los normbres de los archivos
 
 nameling <- function(name){
   new.name <- gsub("Participant_", "P", name)
@@ -11,7 +11,7 @@ nameling <- function(name){
   return(new.name)
 }
 
-### Librerías a usar
+### Librer?as a usar
 
 library(eyelinker)
 library(zoo)
@@ -198,7 +198,7 @@ baseline <- function(baseline, data){
       if(sum(is.na(aux.i$ps)) == nrow(aux.i)){
         aux.i$ZpsBL <- NA
       } else{
-        aux.i$ZpsBL <- scale(aux.i$Zps, center = aux.i$Zps[baseline], scale = TRUE)
+        aux.i$ZpsBL <- scale(aux.i$Zps, center = aux.i$Zps[baseline], scale = FALSE)
       }
       laux[[j]] <- aux.i
       rm(aux.i)
@@ -237,7 +237,7 @@ promedios <- function(datos){
 }
   
 
-# Función que calcula diferencias
+# Funci?n que calcula diferencias
 
 maxdif <- function(Control, Tratamiento, BaseLines){
   aux <- list()
@@ -248,23 +248,43 @@ maxdif <- function(Control, Tratamiento, BaseLines){
     BLC <- baseline(bl, data = Control)
     BLT <- baseline(bl, data = Tratamiento)
     Co <- promedios(BLC)
-    Tr <- promedios(BLT); print(Tr$SD)
+    Tr <- promedios(BLT)
     pC <- Co$media
     pT <- Tr$media    
-    isC <- pC +Co$SD
-    iiC <- pC -Co$SD
-    isT <- pT +Tr$SD
-    iiT <- pT -Tr$SD
-    len <- min(length(pC), length(pT))
-    idMaxDif <- which.max(abs(pC[1:len] - pT[1:len]))
-    aux[[i]] <- data.frame(BL = bl, PC = pC[idMaxDif], PT = pT[idMaxDif], IIC = iiC[idMaxDif], ISC = isC[idMaxDif],
-                           IIT = iiT[idMaxDif], IST = isT[idMaxDif], where = idMaxDif)
+    sdC <- Co$SD
+    sdT <- Tr$SD
+    aux[[i]] <- data.frame(MeanControl = pC, SDControl = sdC, MeanTreat = pT, SDTreat = sdT)
   }
-  output <- rbindlist(aux)
-  return(output)
+  return(aux)
 }
 
-maxdif.int <- function(Control, Tratamiento, BaseLines){
+calculos_sus <- maxdif(Control = kanjis.C, Tratamiento = kanjis.T, BaseLines = c(1, seq(10, 1040, by = 10)))
+
+baseline <- function(baseline, data){
+  subjects <- unique(data$subject_id)
+  lauxGen <- list()
+  for(i in 1:length(subjects)){
+    aux <- subset(data, subject_id == subjects[i])
+    laux <- list()
+    for(j in 1:60){
+      #  cat("sujeto ",i, " de ", length(subjects), " trial ", j, "\n")
+      aux.i <- subset(aux, trial_nr == j)
+      if(sum(is.na(aux.i$ps)) == nrow(aux.i)){
+        aux.i$ZpsBL <- NA
+      } else{
+        aux.i$ZpsBL <- scale(aux.i$Zps, center = FALSE, scale = aux.i$Zps[baseline])
+      }
+      laux[[j]] <- aux.i
+      rm(aux.i)
+    }
+    lauxGen[[i]] <- rbindlist(laux)
+    rm(aux, laux)
+  }
+  BLdata <- rbindlist(lauxGen)
+  return(BLdata)
+}
+
+maxdif <- function(Control, Tratamiento, BaseLines){
   aux <- list()
   i <- 0
   for(bl in BaseLines){
@@ -273,25 +293,27 @@ maxdif.int <- function(Control, Tratamiento, BaseLines){
     BLC <- baseline(bl, data = Control)
     BLT <- baseline(bl, data = Tratamiento)
     Co <- promedios(BLC)
-    Tr <- promedios(BLT); print(Tr$SD)
+    Tr <- promedios(BLT)
     pC <- Co$media
     pT <- Tr$media    
-    isC <- pC + Co$SD
-    iiC <- pC - Co$SD
-    isT <- pT + Tr$SD
-    iiT <- pT - Tr$SD
-    len <- min(length(pC), length(pT))
-    idMaxDif <- which.max(abs(pC[1:len] - pT[1:len]))
-    aux[[i]] <- data.frame(BL = bl, PC = pC[idMaxDif], PT = pT[idMaxDif], IIC = iiC[idMaxDif], ISC = isC[idMaxDif],
-                           IIT = iiT[idMaxDif], IST = isT[idMaxDif], where = idMaxDif)
+    sdC <- Co$SD
+    sdT <- Tr$SD
+    aux[[i]] <- data.frame(MeanControl = pC, SDControl = sdC, MeanTreat = pT, SDTreat = sdT)
   }
-  output <- rbindlist(aux)
-  return(output)
+  return(aux)
 }
 
-sal <- maxdif(Control = kanjis.C, Tratamiento = kanjis.T, BaseLines = c(1, seq(10, 1040, by = 10)))
+calculos_div <- maxdif(Control = kanjis.C, Tratamiento = kanjis.T, BaseLines = c(1, seq(10, 1040, by = 10)))
 
-sal
+beepr::beep(8)
+
+
+
+
+
+
+
+#####################################
 
 sal$cte <- (sal$PC + sal$PT)/2
 
